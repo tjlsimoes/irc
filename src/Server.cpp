@@ -94,26 +94,54 @@ bool Server::checkCommands(std::string input, std::vector<Client>::iterator it)
 		changeUsername(input, it);
 		return true;
 	}
+	else if (input.compare(0, 5, "PART ") == 0) {
+		leaveChannel(input, it);
+		return true;
+	}
+	else if (input.compare(0, 4, "WHO ") == 0) {
+		handleWho(input, it);
+		return true;
+	}
+	else if (input.compare(0, 5, "MODE ") == 0) {
+		handleMode(input, it);
+		return true;
+	}
+	else if (input.compare(0, 5, "QUIT ") == 0) {
+		handleQuit(input, it);
+		return true;
+	}
+	else if (input.compare(0, 6, "TOPIC ") == 0) {
+		handleTopic(input, it);
+		return true;
+	}
+	else if (input.compare(0, 6, "KICK ") == 0) {
+		handleKick(input, it);
+		return true;
+	}
 	return false;
 }
 
 void Server::sendMessageToAllClients(const std::string& message, int sender_fd)
 {
-	std::vector<Client>::iterator it = searchClient(sender_fd);
-	std::vector<Channel>::iterator it_channel = searchChannel();
-	if (it->getChannel() == "nonexistent") {
-		send(it->getClientFd(), "You are not in any channel.\n", 29, 0);
+	if (message.size() < 10 || message.substr(0, 9) != "PRIVMSG #") {
+		return; // Not a channel message
+	}
+	std::string channelName = getFirstWord(message.substr(9));
+	std::string msgContent = message.substr(9 + channelName.length() + 2);
+	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+	if (it_channel == channels.end()) {
 		return;
 	}
-	for (size_t i = 0; i < clients.size(); i++) {
-		if (clients[i].getChannel() == it->getChannel()) {
-			if (clients[i].getClientFd() == sender_fd) {
-				continue;
-			}
-			send(clients[i].getClientFd(), "\n", 1, 0);
-			send(clients[i].getClientFd(), message.c_str(), message.length(), 0);
-			send(clients[i].getClientFd(), "\n", 1, 0);
+	std::vector<Client>::iterator it_client = searchClient(sender_fd);
+
+	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
+		if (it_channel->getClients()[i].getClientFd() == sender_fd) {
+			continue;
 		}
+		std::string fMessage = ":" + it_client->getNickname() + "!" + it_client->getUsername() + "@host"
+		+ " PRIVMSG #" + channelName + " :" + msgContent + "\n";
+		std::cout << fMessage << std::endl;
+		send(it_channel->getClients()[i].getClientFd(), fMessage.c_str(), fMessage.length(), 0);
 	}
 }
 
@@ -206,28 +234,30 @@ void Server::handleClientData(int client_fd)
 	}
 	buffer[bytes_read] = '\0';
 
-	std::string input(buffer);
-	
-	if (!input.empty() && input[input.length() - 1] == '\n') {
-		input = input.substr(0, input.length() - 1);
-	}
-	if (!input.empty() && input[input.length() - 1] == '\r') {
-		input = input.substr(0, input.length() - 1);
-	}
 	
 	std::vector<Client>::iterator it = searchClient(client_fd);
 	send(client_fd, "\n", 1, 0);
-	std::vector<std::string> lines = split(input);
+	std::vector<std::string> lines = split(buffer);
 
 	for (size_t i = 0; i < lines.size(); i++) {
-		std::cout << "Received from client " << client_fd << ": " << lines[i] << std::endl;
-		if (std::string("CAP LS 302") == lines[i]) {
+		std::string input(lines[i]);
+		if (!input.empty() && input[input.length() - 1] == '\n') {
+			input = input.substr(0, input.length() - 1);
+		}
+		if (!input.empty() && input[input.length() - 1] == '\r') {
+			input = input.substr(0, input.length() - 1);
+		}
+		std::cout << "Received from client " << client_fd << ": " << input << std::endl;
+		if (std::string("CAP LS 302") == input) {
 			send(client_fd, "CAP * LS :ircv3 multi-prefix\n", 30, 0);
+			continue;
+		}
+		if (std::string(";") == input) {
 			continue;
 		}
 
 		if (!it->isClientAuthenticated()) {
-			if (lines[i] != ("PASS " + password)) {
+			if (input != ("PASS " + password)) {
 				send(client_fd, "Wrong password!\n", 16, 0);
 				removeClient(client_fd);
 				std::cout << "Client disconnected due to wrong password (fd: " << client_fd << ")" << std::endl;
@@ -238,7 +268,7 @@ void Server::handleClientData(int client_fd)
 			}
 			continue;
 		}
-		if (checkCommands(lines[i], it) == false)
+		if (checkCommands(input, it) == false)
 			sendMessageToAllClients(input, client_fd);
 	}
 	
@@ -300,7 +330,7 @@ void Server::startServer()
 		listenSocket();
 		runServerLoop();
 	} catch (const std::exception& e) {
-		std::cerr << "Error starting server: " << e.what() << std::endl;
+		std::cerr << "Error during server operation: " << e.what() << std::endl;
 	}
 
 }

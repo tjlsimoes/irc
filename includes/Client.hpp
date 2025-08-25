@@ -13,7 +13,8 @@ class Client
 		std::string nickname;
 		std::string username;
 		bool isAuthenticated;
-		bool op;
+		bool serverOperator;
+		bool usernameDefined;
 
 	public:
 		struct pollfd clientPollFd;
@@ -25,7 +26,11 @@ class Client
 		bool isClientAuthenticated() const;
 		void changeAuthenticationStatus();
 		Client(int fd, struct sockaddr_in addr);
-		
+		bool isServerOperator() const;
+		void changeOperatorStatus();
+		void setUsernameDefined(bool status);
+		bool isUsernameDefined() const;
+
 };
 
 #endif

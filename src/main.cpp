@@ -20,3 +20,5 @@ int main(int argc, char **argv)
 
 	server.startServer();
 }
+
+// to connect via terminal "nc ip port"

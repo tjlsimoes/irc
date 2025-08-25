@@ -5,11 +5,11 @@ Client::Client(int fd, struct sockaddr_in addr)
 {
 	std::stringstream ss;
 	ss << fd;
-	nickname = "Guest " + ss.str();
-	username = "User " + ss.str();
-	channel = "nonexistent";
+	nickname = "Guest" + ss.str();
+	username = "User" + ss.str();
 	isAuthenticated = false;
-	op = false;
+	serverOperator = false;
+	usernameDefined = false;
 }
 
 int Client::getClientFd() const
@@ -49,4 +49,24 @@ void Client::setNickname(const std::string& nick)
 	if (!nick.empty()) {
 		nickname = nick;
 	}
+}
+
+bool Client::isServerOperator() const
+{
+	return serverOperator;
+}
+
+void Client::changeOperatorStatus()
+{
+	serverOperator = !serverOperator;
+}
+
+void Client::setUsernameDefined(bool status)
+{
+	usernameDefined = status;
+}
+
+bool Client::isUsernameDefined() const
+{
+	return usernameDefined;
 }

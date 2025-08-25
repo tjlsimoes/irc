@@ -30,6 +30,8 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 
+class Channel;
+
 class Client;
 
 //template<typename T>
@@ -71,10 +73,17 @@ class Server
 	void changeNickname(std::string input, std::vector<Client>::iterator it);
 	void changeUsername(std::string input, std::vector<Client>::iterator it);
 	void joinChannel(std::string input, std::vector<Client>::iterator it);
+	void leaveChannel(std::string input, std::vector<Client>::iterator it);
+	void handleWho(std::string input, std::vector<Client>::iterator it);
+	void handleMode(std::string input, std::vector<Client>::iterator it);
+	void handleQuit(std::string input, std::vector<Client>::iterator it);
+	void handleTopic(std::string input, std::vector<Client>::iterator it);
+	void handleKick(std::string input, std::vector<Client>::iterator it);
 
 };
 
 
 std::string getFirstWord(const std::string& input);
+std::string timeToString(time_t time);
 
 #endif
