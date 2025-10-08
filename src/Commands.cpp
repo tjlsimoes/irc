@@ -240,5 +240,42 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleKick(std::string input, std::vector<Client>::iterator it)
 {
+	std::string channelName = getFirstWord(input.substr(6));
+	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+
+	if (it_channel == channels.end()) {
+		send(it->getClientFd(), "No such channel.\n", 17, 0);
+		return;
+	}
+	
+	if (it_channel->isOperator(*it) == false) {
+		send(it->getClientFd(), "You are not an operator of this channel!\n", 40, 0);
+		return;
+	}
+
+	std::string targetNick = getFirstWord(input.substr(6 + channelName.length() + 1));
+	if (targetNick.empty()) {
+		send(it->getClientFd(), "Invalid target nickname!\n", 25, 0);
+		return ;
+	}
+	std::string reason = (input.length() > 6 + channelName.length() + 1 + targetNick.length()) ? 
+		input.substr(6 + channelName.length() + 1 + targetNick.length() + 1) : " No reason specified";
+	reason = reason + "\r\n";
+
+	std::string message;
+	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
+		if (it_channel->getClients()[i].getNickname() == targetNick) {
+			message = ":" + it->getNickname() + "!" + it->getUsername() + "@host KICK #" + channelName + " " + 
+				targetNick + " :" + reason;
+			send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
+			if (it_channel->isOperator(it_channel->getClients()[i])) {
+				it_channel->removeOp(it_channel->getClients()[i]);
+			}
+			it_channel->removeClient(it_channel->getClients()[i]);
+		}
+	}
+	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
+		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
+	}
 	
 }

@@ -114,7 +114,7 @@ bool Server::checkCommands(std::string input, std::vector<Client>::iterator it)
 		handleTopic(input, it);
 		return true;
 	}
-	else if (input.compare(0, 6, "KICK ") == 0) {
+	else if (input.compare(0, 5, "KICK ") == 0) {
 		handleKick(input, it);
 		return true;
 	}
