@@ -264,7 +264,7 @@ void Server::handleClientData(int client_fd)
 			}
 			else {
 				it->changeAuthenticationStatus();
-				send(client_fd, "Welcome\n Type *Guide* for more information.\n", 48, 0);
+				send(client_fd, "Welcome\n Type *Guide* for more information.\n", 44, 0);
 			}
 			continue;
 		}
