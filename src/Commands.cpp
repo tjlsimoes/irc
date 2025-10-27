@@ -195,6 +195,12 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 {
 	std::string channelName = getFirstWord(input.substr(5));
 
+	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+	if (it_channel == channels.end()) {
+		send(it->getClientFd(), "No such channel.\n", 17, 0);
+		return;
+	}
+
 	std::cout << "Client " << it->getClientFd() << " quit safely " << std::endl;
 	for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
 		it_channel->removeClient(*it);
@@ -202,8 +208,7 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 			it_channel->removeOp(*it);
 		}
 	}
-	
-	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host PART #" + channelName + "\r\n";
 	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
 		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
