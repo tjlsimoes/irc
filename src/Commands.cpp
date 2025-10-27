@@ -216,6 +216,11 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 	std::string channelName = getFirstWord(input.substr(7));
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 
+	if (it_channel == channels.end()) {
+		send(it->getClientFd(), "No such channel.\n", 17, 0);
+		return;
+	}
+
 	if (input.length() <= 7 + channelName.length()) {
 		std::string message = ":ircserver.local 332 " + it->getNickname() + " #" + channelName + " :" + it_channel->getTopic() + "\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
