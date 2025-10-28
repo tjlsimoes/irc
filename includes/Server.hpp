@@ -68,6 +68,8 @@ class Server
 
 	std::vector<Channel>::iterator searchChannel(const std::string& channelName);
 	std::vector<Client>::iterator searchClient(int client_fd);
+	std::vector<Client>::iterator searchClientByNick(std::string const & nickname);
+
 
 	// commands
 	void changeNickname(std::string input, std::vector<Client>::iterator it);
@@ -79,6 +81,8 @@ class Server
 	void handleQuit(std::string input, std::vector<Client>::iterator it);
 	void handleTopic(std::string input, std::vector<Client>::iterator it);
 	void handleKick(std::string input, std::vector<Client>::iterator it);
+	void handleInvite(std::string input, std::vector<Client>::iterator it);
+	static void broadcastMessage(std::string const &message, std::vector<Channel>::iterator it_channel);
 
 };
 

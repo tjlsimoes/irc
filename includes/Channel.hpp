@@ -18,6 +18,8 @@ class Channel
 		std::string topic;
 		std::string topicSetter;
 		time_t timestamp;
+		bool inviteOnly;
+		std::vector<std::string> inviteList;
 
 	public:
 		Channel(std::string name, Server* serv);
@@ -36,6 +38,14 @@ class Channel
 		std::string getTopic() const;
 		time_t getTimestamp() const;
 		std::string getTopicSetter() const;
+
+		void changeFlag(char flag, bool add);
+
+		void setInviteOnly(bool add);
+		bool isInviteOnly() const;
+		void addInvite(std::string const &nickname);
+		void removeInvite(std::string const &nickname);
+		bool isInvited(std::string const &nickname);
 };
 
 #endif

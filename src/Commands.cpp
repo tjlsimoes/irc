@@ -22,6 +22,16 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 			return ;
 		}
 	}
+
+	if (it_channel->isInviteOnly()
+		&& !it_channel->isInvited(it->getNickname())
+		&& !it_channel->isOperator(*it)) {
+		std::string message = ":ircserver.local 473 " + it->getNickname()
+						+ " #" + channelName + " :Cannot join channel (+i)\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return;
+	}
+
 	it_channel->addClient(*it);
 	if (operatorFlag) {
 		it_channel->addOp(*it);
@@ -134,6 +144,66 @@ void Server::handleWho(std::string input, std::vector<Client>::iterator it)
 	send(it->getClientFd(), message.c_str(), message.length(), 0);
 }
 
+std::vector<Client>::iterator Server::searchClientByNick(std::string const & nickname) {
+	std::vector<Client>::iterator it = clients.begin();
+	for (; it != clients.end(); ++it) {
+		if (it->getNickname() == nickname) {
+			return it;
+		}
+	}
+	throw std::runtime_error("Client not found");
+	return it;
+}
+
+
+void Server::handleInvite(std::string input, std::vector<Client>::iterator it)
+{
+	// INVITE nick #channel
+	std::string rest = input.substr(7);
+	std::string nick = getFirstWord(rest);
+	std::string chan = getFirstWord(rest.substr(nick.length() + 1));
+	if (nick.empty() || chan.empty()) {
+		send(it->getClientFd(), "Usage: INVITE <nick> <channel>\n", 31, 0);
+		return;
+	}
+
+	std::vector<Channel>::iterator it_channel = searchChannel(chan);
+	if (it_channel == channels.end()
+		|| !it_channel->isOperator(*it)) {
+		send(it->getClientFd(),
+			 "You need to be a channel operator to invite.\n", 45, 0);
+		return;
+		}
+
+	// find target client
+	std::vector<Client>::iterator target = searchClientByNick(nick);
+	if (target == clients.end()) {
+		send(it->getClientFd(),
+			 "No such nick.\n", 14, 0);
+		return;
+	}
+
+	it_channel->addInvite(nick);
+
+	// 341 RPL_INVITING
+	std::string message = ":ircserver.local 341 " + it->getNickname()
+					  + " " + nick + " #" + chan + "\r\n";
+	send(it->getClientFd(), message.c_str(), message.length(), 0);
+
+	// Notify the invited user
+	message = ":" + it->getNickname()
+		+ "!" + it->getUsername() + "@host INVITE " + nick
+		+ " :#" + chan + "\r\n";
+	send(target->getClientFd(), message.c_str(), message.length(), 0);
+}
+
+void Server::broadcastMessage(std::string const & message, std::vector<Channel>::iterator const it_channel) {
+	for (size_t k = 0; k < it_channel->getClients().size(); ++k) {
+		std::cout << "Sending mode change to client " << it_channel->getClients()[k].getClientFd() << ": " << message;
+		send(it_channel->getClients()[k].getClientFd(), message.c_str(), message.length(), 0);
+	}
+}
+
 void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 {
 	std::string channelName = getFirstWord(input.substr(6));
@@ -164,10 +234,25 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 			send(it->getClientFd(), "You are not an operator of this channel!\n", 40, 0);
 			return;
 		}
+		bool add = true;
 		for (size_t i = 0; i < anyChanges.length(); i++) {
-			char flag = anyChanges[i];
+			char const flag = anyChanges[i];
+
+			if (flag == '-') {
+				add = false;
+				continue ;
+			}
+			else if (flag == '+')
+				continue ;
+
+
 			if (flag == 'i') {
-				
+				it_channel->setInviteOnly(add);
+				std::string message = ":" + it->getNickname()
+											+ "!" + it->getUsername() + "@host MODE #" + channelName
+											+ " " + (add ? "+" : "-") + "i\r\n";
+				broadcastMessage(message, it_channel);
+				std::cout << message << std::endl;
 			}
 			else if (flag == 't') {
 

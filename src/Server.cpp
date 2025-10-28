@@ -118,6 +118,10 @@ bool Server::checkCommands(std::string input, std::vector<Client>::iterator it)
 		handleKick(input, it);
 		return true;
 	}
+	else if (input.compare(0, 7, "INVITE ") == 0) {
+		handleInvite(input, it);
+		return true;
+	}
 	return false;
 }
 

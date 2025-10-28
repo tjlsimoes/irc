@@ -4,6 +4,7 @@ Channel::Channel(std::string name, Server* serv) : name(name), server(serv)
 {
 	topic = "";
 	topicSetter = "";
+	inviteOnly = false;
 }
 
 Channel::~Channel()
@@ -101,4 +102,37 @@ time_t Channel::getTimestamp() const
 std::string Channel::getTopicSetter() const
 {
 	return topicSetter;
+}
+
+void Channel::changeFlag(char const flag, bool const add) {
+	if (add)
+		addFlag(flag);
+	else
+		removeFlag(flag);
+}
+
+bool Channel::isInviteOnly() const {
+	return inviteOnly;
+}
+
+void Channel::setInviteOnly(bool const add) {
+	inviteOnly = add;
+	changeFlag('i', add);
+}
+
+void Channel::addInvite(std::string const &nickname) {
+	inviteList.push_back(nickname);
+}
+
+void Channel::removeInvite(std::string const &nickname) {
+	for (std::vector<std::string>::iterator it = inviteList.begin(); it != inviteList.end(); ++it) {
+		if (*it == nickname) {
+			inviteList.erase(it);
+			break;
+		}
+	}
+}
+
+bool Channel::isInvited(std::string const &nickname) {
+	return std::count(inviteList.begin(), inviteList.end(), nickname);
 }
