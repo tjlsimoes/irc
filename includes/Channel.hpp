@@ -21,6 +21,7 @@ class Channel
 		bool inviteOnly;
 		std::vector<std::string> inviteList;
 		bool topicLocked;
+		std::string key;
 
 	public:
 		Channel(std::string name, Server* serv);
@@ -42,14 +43,19 @@ class Channel
 
 		void changeFlag(char flag, bool add);
 
-		void setInviteOnly(bool add);
 		bool isInviteOnly() const;
+		void setInviteOnly(bool add);
 		void addInvite(std::string const &nickname);
 		void removeInvite(std::string const &nickname);
 		bool isInvited(std::string const &nickname);
 
 		bool isTopicLocked() const;
 		void setTopicLock(bool add);
+
+		bool hasKey() const;
+		void setKey(std::string const & newKey, bool add);
+		std::string getKey() const;
+		bool checkKey(std::string const &attempted) const;
 };
 
 #endif

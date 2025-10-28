@@ -146,3 +146,26 @@ void Channel::setTopicLock(bool const add) {
 	topicLocked = add;
 	changeFlag('t', add);
 }
+
+bool Channel::hasKey() const {
+	return !key.empty();
+}
+
+bool Channel::checkKey(std::string const &attempted) const {
+		return key == attempted;
+}
+
+std::string Channel::getKey() const {
+	return key;
+}
+
+void Channel::setKey(std::string const & newKey, bool const add) {
+	if (add && !newKey.empty()) {
+		key = newKey;
+		changeFlag('k', add);
+	}
+	else {
+		key.clear();
+		changeFlag('k', add);
+	}
+}

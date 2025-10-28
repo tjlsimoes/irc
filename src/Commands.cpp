@@ -3,7 +3,10 @@
 void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 {
 	bool operatorFlag = false;
-	std::string channelName = getFirstWord(input.substr(5));
+	std::string rest = input.substr(5);                 // after "JOIN "
+	std::string channelName = getFirstWord(rest);
+	std::string providedKey;
+	!rest.substr(channelName.length()).empty() ? providedKey = getFirstWord(rest.substr(channelName.length() + 1)) : providedKey = "";
 	if (channelName.empty()) {
 		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
 		return ;
@@ -28,6 +31,12 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 		&& !it_channel->isOperator(*it)) {
 		std::string message = ":ircserver.local 473 " + it->getNickname()
 						+ " #" + channelName + " :Cannot join channel (+i)\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return;
+	}
+	if (it_channel->hasKey() && !it_channel->checkKey(providedKey)) {
+		std::string message = ":ircserver.local 475 " + it->getNickname()
+						+ " #" + channelName + " :Cannot join channel (+k)\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
@@ -217,12 +226,13 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	std::string anyChanges = input.substr(6 + channelName.length());
+	std::string anyChanges = getFirstWord(input.substr(6 + channelName.length() + 1));
 
 	if (anyChanges.empty()) {
 		std::string modes;
 		for (size_t i = 0; i < it_channel->getFlags().size(); i++) {
-			modes += it_channel->getFlags()[i];
+			if (it_channel->getFlags()[i] != 'k')
+				modes += it_channel->getFlags()[i];
 		}
 
 		std::string message = ":ircserver.local 324 " + it->getNickname() + " #" + channelName + " +" + modes + "\r\n";
@@ -262,6 +272,21 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 				broadcastMessage(message, it_channel);
 			}
 			else if (flag == 'k') {
+				if (add) {
+					std::string key = getFirstWord(input.substr(6 + channelName.length() + anyChanges.length() + 2));
+					if (key.empty()) {
+						send(it->getClientFd(), "MODE +k requires a key\n", 23, 0);
+						continue;
+					}
+					it_channel->setKey(key, add);
+				} else
+					it_channel->setKey("", add);
+
+				std::string message = ":" + it->getNickname()
+									+ "!" + it->getUsername() + "@host MODE #" + channelName
+									+ " " + (add ? "+" : "-") + "k"
+									+ (add ? " " + it_channel->getKey() : "") + "\r\n";
+				broadcastMessage(message, it_channel);
 
 			}
 			else if (flag == 'o') {
