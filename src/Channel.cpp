@@ -6,6 +6,7 @@ Channel::Channel(std::string name, Server* serv) : name(name), server(serv)
 	topicSetter = "";
 	inviteOnly = false;
 	topicLocked = false;
+	limit = 0; // Default value for no limit
 }
 
 Channel::~Channel()
@@ -168,4 +169,20 @@ void Channel::setKey(std::string const & newKey, bool const add) {
 		key.clear();
 		changeFlag('k', add);
 	}
+}
+
+bool Channel::hasLimit() const {
+	return limit > 0;
+}
+
+void Channel::setLimit(int const newLimit, bool const add) {
+	if (add && newLimit > 0)
+		limit = newLimit;
+	else
+		limit = 0;
+	changeFlag('l', add);
+}
+
+int Channel::getLimit() const {
+	return limit;
 }

@@ -22,6 +22,7 @@ class Channel
 		std::vector<std::string> inviteList;
 		bool topicLocked;
 		std::string key;
+		int limit;
 
 	public:
 		Channel(std::string name, Server* serv);
@@ -56,6 +57,10 @@ class Channel
 		void setKey(std::string const & newKey, bool add);
 		std::string getKey() const;
 		bool checkKey(std::string const &attempted) const;
+
+		bool hasLimit() const;
+		void setLimit(int newLimit, bool add);
+		int	getLimit() const;
 };
 
 #endif

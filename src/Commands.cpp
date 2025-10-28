@@ -40,6 +40,14 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
+	if (it_channel->hasLimit()
+		&& it_channel->getClients().size() >= static_cast<size_t>(it_channel->getLimit()))
+	{
+		std::string message = ":ircserver.local 471 " + it->getNickname()
+						+ " #" + channelName + " :Cannot join channel (+l)\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return;
+	}
 
 	it_channel->addClient(*it);
 	if (operatorFlag) {
@@ -230,12 +238,18 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 
 	if (anyChanges.empty()) {
 		std::string modes;
+		std::string params;
 		for (size_t i = 0; i < it_channel->getFlags().size(); i++) {
 			if (it_channel->getFlags()[i] != 'k')
 				modes += it_channel->getFlags()[i];
+			else if (it_channel->getFlags()[i] != 'l' && it_channel->hasLimit()) {
+				std::ostringstream oss;
+				oss << it_channel->getLimit();
+				params += " " + oss.str();
+			}
 		}
 
-		std::string message = ":ircserver.local 324 " + it->getNickname() + " #" + channelName + " +" + modes + "\r\n";
+		std::string message = ":ircserver.local 324 " + it->getNickname() + " #" + channelName + " +" + modes + params + "\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		std::cout << message << std::endl;
 	}
@@ -299,7 +313,33 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 				}
 			}
 			else if (flag == 'l') {
+				if (add) {
+					std::string limitStr = getFirstWord(input.substr(6 + channelName.length() + anyChanges.length() + 2));
+					if (limitStr.empty()) {
+						send(it->getClientFd(), "MODE +l requires a limit\n", 25, 0);
+						continue;
+					}
+					int limit = std::atoi(limitStr.c_str());
+					if (limit <= 0) {
+						send(it->getClientFd(), "Limit must be > 0\n", 18, 0);
+						continue;
+					}
+					it_channel->setLimit(limit, add);
+				} else
+					it_channel->setLimit(0, add);
 
+				std::string limitParam;
+				if (add && it_channel->hasLimit()) {
+					std::ostringstream oss;
+					oss << it_channel->getLimit();
+					limitParam = " " + oss.str();
+				}
+
+				std::string message = ":" + it->getNickname()
+									+ "!" + it->getUsername() + "@host MODE #" + channelName
+									+ " " + (add ? "+" : "-") + "l"
+									+ limitParam + "\r\n";
+				broadcastMessage(message, it_channel);
 			}
 		}
 	}
