@@ -306,12 +306,44 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 
 			}
 			else if (flag == 'o') {
-				std::string target = getFirstWord(anyChanges.substr(i + 1));
-				if (it_channel->isOperator(*it)) {
-					it_channel->removeOp(*it);
+				std::string targetNick;
+				!rest.substr(channelName.length() + anyChanges.length() + 2).empty() ? targetNick = getFirstWord(input.substr(6 + channelName.length() + anyChanges.length() + 2)) : targetNick = "";
+				if (!add) {
+					if (targetNick.empty()) {
+						send(it->getClientFd(), "MODE -o requires a nickname\n", 28, 0);
+						continue;
+					}
+					std::vector<Client>::iterator targetIt = searchClientByNick(targetNick);
+					if (targetIt == clients.end()
+						|| !it_channel->hasClient(*targetIt)) {
+						send(it->getClientFd(), "No such nickname in channel\n", 28, 0);
+						continue;
+					}
+
+					it_channel->removeOp(*targetIt);
+
+					std::string message = ":" + it->getNickname()
+						+ "!" + it->getUsername() + "@host MODE #" + channelName
+						+ " -o " + targetNick + "\r\n";
+					broadcastMessage(message, it_channel);
 				}
 				else {
-					it_channel->addOp(*it);
+					if (targetNick.empty()) {
+						send(it->getClientFd(), "MODE -o requires a nickname\n", 28, 0);
+						continue;
+					}
+					std::vector<Client>::iterator targetIt = searchClientByNick(targetNick);
+					if (targetIt == clients.end()
+						|| !it_channel->hasClient(*targetIt)) {
+						send(it->getClientFd(), "No such nickname in channel\n", 28, 0);
+						continue;
+						}
+					it_channel->addOp(*targetIt);
+
+					std::string message = ":" + it->getNickname()
+						+ "!" + it->getUsername() + "@host MODE #" + channelName
+						+ " +o " + targetNick + "\r\n";
+					broadcastMessage(message, it_channel);
 				}
 			}
 			else if (flag == 'l') {

@@ -186,3 +186,11 @@ void Channel::setLimit(int const newLimit, bool const add) {
 int Channel::getLimit() const {
 	return limit;
 }
+
+
+bool Channel::hasClient(const Client& client) const {
+	for (size_t i = 0; i < clients.size(); ++i)
+		if (clients[i].getClientFd() == client.getClientFd())
+			return true;
+	return false;
+}

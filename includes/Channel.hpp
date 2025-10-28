@@ -61,6 +61,8 @@ class Channel
 		bool hasLimit() const;
 		void setLimit(int newLimit, bool add);
 		int	getLimit() const;
+
+		bool hasClient(const Client& client) const;
 };
 
 #endif
