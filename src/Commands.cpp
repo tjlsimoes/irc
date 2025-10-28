@@ -223,7 +223,8 @@ void Server::broadcastMessage(std::string const & message, std::vector<Channel>:
 
 void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 {
-	std::string channelName = getFirstWord(input.substr(6));
+	std::string rest = input.substr(6);
+	std::string channelName = getFirstWord(rest);
 	if (channelName.empty()) {
 		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
 		return;
@@ -234,7 +235,8 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	std::string anyChanges = getFirstWord(input.substr(6 + channelName.length() + 1));
+	std::string anyChanges;
+	!rest.substr(channelName.length()).empty() ? anyChanges = getFirstWord(rest.substr(channelName.length() + 1)) : anyChanges = "";
 
 	if (anyChanges.empty()) {
 		std::string modes;
