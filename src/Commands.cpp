@@ -168,7 +168,7 @@ std::vector<Client>::iterator Server::searchClientByNick(std::string const & nic
 			return it;
 		}
 	}
-	throw std::runtime_error("Client not found");
+	// throw std::runtime_error("Client not found");
 	return it;
 }
 
