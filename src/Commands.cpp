@@ -255,7 +255,11 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 				std::cout << message << std::endl;
 			}
 			else if (flag == 't') {
-
+				it_channel->setTopicLock(add);
+				std::string message = ":" + it->getNickname()
+									+ "!" + it->getUsername() + "@host MODE #" + channelName
+									+ " " + (add ? "+" : "-") + "t\r\n";
+				broadcastMessage(message, it_channel);
 			}
 			else if (flag == 'k') {
 
@@ -321,14 +325,20 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		}
 		return;
 	}
-	else {
-		std::string newTopic = input.substr(7 + channelName.length() + 2);
-		it_channel->setTopic(newTopic, it->getNickname());
-		std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host TOPIC #" + channelName + " :" + newTopic + "\r\n";
-		for (size_t i = 0; i < it_channel->getClients().size(); ++i) {
-			std::cout << "Sending topic change to client " << it_channel->getClients()[i].getClientFd() << ": " << message;
-			send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
-		}
+
+	if (it_channel->isTopicLocked() && !it_channel->isOperator(*it)) {
+		std::string message = ":ircserver.local 482 " + it->getNickname()
+						+ " #" + channelName + " :You're not a channel operator\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return;
+	}
+
+	std::string newTopic = input.substr(7 + channelName.length() + 2);
+	it_channel->setTopic(newTopic, it->getNickname());
+	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host TOPIC #" + channelName + " :" + newTopic + "\r\n";
+	for (size_t i = 0; i < it_channel->getClients().size(); ++i) {
+		std::cout << "Sending topic change to client " << it_channel->getClients()[i].getClientFd() << ": " << message;
+		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
 	}
 
 }

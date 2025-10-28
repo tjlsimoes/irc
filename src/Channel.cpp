@@ -5,6 +5,7 @@ Channel::Channel(std::string name, Server* serv) : name(name), server(serv)
 	topic = "";
 	topicSetter = "";
 	inviteOnly = false;
+	topicLocked = false;
 }
 
 Channel::~Channel()
@@ -135,4 +136,13 @@ void Channel::removeInvite(std::string const &nickname) {
 
 bool Channel::isInvited(std::string const &nickname) {
 	return std::count(inviteList.begin(), inviteList.end(), nickname);
+}
+
+bool Channel::isTopicLocked() const {
+	return topicLocked;
+}
+
+void Channel::setTopicLock(bool const add) {
+	topicLocked = add;
+	changeFlag('t', add);
 }

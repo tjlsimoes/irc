@@ -20,6 +20,7 @@ class Channel
 		time_t timestamp;
 		bool inviteOnly;
 		std::vector<std::string> inviteList;
+		bool topicLocked;
 
 	public:
 		Channel(std::string name, Server* serv);
@@ -46,6 +47,9 @@ class Channel
 		void addInvite(std::string const &nickname);
 		void removeInvite(std::string const &nickname);
 		bool isInvited(std::string const &nickname);
+
+		bool isTopicLocked() const;
+		void setTopicLock(bool add);
 };
 
 #endif
