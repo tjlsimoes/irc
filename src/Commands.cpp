@@ -257,7 +257,7 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 	}
 	else {
 		if (it_channel->isOperator(*it) == false) {
-			send(it->getClientFd(), "You are not an operator of this channel!\n", 40, 0);
+			send(it->getClientFd(), "You are not an operator of this channel!\n", 41, 0);
 			return;
 		}
 		bool add = true;
@@ -421,7 +421,7 @@ void Server::handleKick(std::string input, std::vector<Client>::iterator it)
 	}
 	
 	if (it_channel->isOperator(*it) == false) {
-		send(it->getClientFd(), "You are not an operator of this channel!\n", 40, 0);
+		send(it->getClientFd(), "You are not an operator of this channel!\n", 41, 0);
 		return;
 	}
 
