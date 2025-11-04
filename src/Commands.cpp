@@ -470,29 +470,44 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleKick(std::string input, std::vector<Client>::iterator it)
 {
-	std::string channelName = getFirstWord(input.substr(6));
-	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() < 3) {
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " KICK: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
+	}
+	std::string const & channelName = args[1];
+	std::vector<Channel>::iterator const it_channel = searchChannel(channelName);
 
 	if (it_channel == channels.end()) {
-		send(it->getClientFd(), "No such channel.\n", 17, 0);
+		std::string message = ":ircserver.local 403 " + it->getNickname() + " KICK: no such channel" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
 	
 	if (it_channel->isOperator(*it) == false) {
-		send(it->getClientFd(), "You are not an operator of this channel!\n", 41, 0);
+		std::string message = ":ircserver.local 482 " + it->getNickname() + " KICK: not an operator of this channel" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
 
-	std::string targetNick = getFirstWord(input.substr(6 + channelName.length() + 1));
-	if (targetNick.empty()) {
-		send(it->getClientFd(), "Invalid target nickname!\n", 25, 0);
-		return ;
+	std::string const  & targetNick = args[2];
+
+	std::string reason = "";
+	if (args.size() >= 4) {
+		for (unsigned int i = 3; i < args.size(); i++) {
+			if (i == 3 && args[i][0] == ':') {
+				reason += args[i].substr(1) + " ";
+				continue ;
+			}
+			reason += args[i] + " ";
+		}
 	}
-	std::string reason = (input.length() > 6 + channelName.length() + 1 + targetNick.length()) ? 
-		input.substr(6 + channelName.length() + 1 + targetNick.length() + 1) : " No reason specified";
+	reason.empty() ? reason =  "No reason specified" : reason;
 	reason = reason + "\r\n";
 
 	std::string message;
+	bool found = false;
 	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
 		if (it_channel->getClients()[i].getNickname() == targetNick) {
 			message = ":" + it->getNickname() + "!" + it->getUsername() + "@host KICK #" + channelName + " " + 
@@ -502,10 +517,15 @@ void Server::handleKick(std::string input, std::vector<Client>::iterator it)
 				it_channel->removeOp(it_channel->getClients()[i]);
 			}
 			it_channel->removeClient(it_channel->getClients()[i]);
+			found = true;
 		}
+	}
+	if (!found) {
+		message = ":ircserver.local 442 " + it->getNickname() + " KICK: user not found" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
 	}
 	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
 		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
 	}
-	
 }
