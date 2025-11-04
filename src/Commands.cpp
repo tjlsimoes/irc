@@ -412,14 +412,14 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 {
-	std::string rest = input.substr(6);                 // after "TOPIC "
-	std::string channelName = getFirstWord(rest);
-	if (channelName.empty()) {
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() == 1) {
 		std::string message = ":ircserver.local 461 " + it->getNickname() + " TOPIC: not enough parameters" "\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+	std::string const & channelName = args[1];
+	std::vector<Channel>::iterator const it_channel = searchChannel(channelName);
 
 	if (it_channel == channels.end()) {
 		send(it->getClientFd(), "No such channel.\n", 17, 0);
@@ -432,7 +432,7 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		return ;
 	}
 
-	if (input.length() <= 7 + channelName.length()) {
+	if (args.size() == 2) {
 		std::string message = ":ircserver.local 332 " + it->getNickname() + " #" + channelName + " :" + it_channel->getTopic() + "\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		if (!it_channel->getTopicSetter().empty()) {
@@ -450,8 +450,15 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	std::string newTopic ;
-	!rest.substr(channelName.length()).empty() ? newTopic = getFirstWord(rest.substr(channelName.length() + 2)) : newTopic = "";;
+	if (args.size() != 3) {
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " TOPIC: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
+	}
+
+	std::string newTopic = args[2];
+	if (newTopic[0] == ':')
+		newTopic = newTopic.substr(1);
 	it_channel->setTopic(newTopic, it->getNickname());
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host TOPIC #" + channelName + " :" + newTopic + "\r\n";
 	for (size_t i = 0; i < it_channel->getClients().size(); ++i) {
