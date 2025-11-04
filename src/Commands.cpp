@@ -264,20 +264,22 @@ void Server::broadcastMessage(std::string const & message, std::vector<Channel>:
 
 void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 {
-	std::string rest = input.substr(6);
-	std::string channelName = getFirstWord(rest);
-	if (channelName.empty()) {
-		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
-		return;
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() < 2) {
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " MODE: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
 	}
+	std::string const & channelName = args[1];
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 	if (it_channel == channels.end()) {
-		send(it->getClientFd(), "No such channel.\n", 17, 0);
+		std::string message = ":ircserver.local 403 " + it->getNickname() + " MODE: no such channel" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
 
 	std::string anyChanges;
-	!rest.substr(channelName.length()).empty() ? anyChanges = getFirstWord(rest.substr(channelName.length() + 1)) : anyChanges = "";
+	args.size() > 2 ? anyChanges = args[2] : anyChanges = "";
 
 	if (anyChanges.empty()) {
 		std::string modes;
@@ -297,7 +299,9 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 	}
 	else {
 		if (it_channel->isOperator(*it) == false) {
-			send(it->getClientFd(), "You are not an operator of this channel!\n", 41, 0);
+			std::string message = ":ircserver.local 482 " + it->getNickname()
+						+ " #" + channelName + " :You're not a channel operator\r\n";
+			send(it->getClientFd(), message.c_str(), message.length(), 0);
 			return;
 		}
 		bool add = true;
@@ -329,7 +333,8 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 			}
 			else if (flag == 'k') {
 				if (add) {
-					std::string key = getFirstWord(input.substr(6 + channelName.length() + anyChanges.length() + 2));
+					std::string key;
+					args.size() > 3 ? key = args[3] : key = "";
 					if (key.empty()) {
 						send(it->getClientFd(), "MODE +k requires a key\n", 23, 0);
 						continue;
@@ -347,7 +352,7 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 			}
 			else if (flag == 'o') {
 				std::string targetNick;
-				!rest.substr(channelName.length() + anyChanges.length() + 2).empty() ? targetNick = getFirstWord(input.substr(6 + channelName.length() + anyChanges.length() + 2)) : targetNick = "";
+				args.size() > 3 ? targetNick = args[3] : targetNick = "";
 				if (!add) {
 					if (targetNick.empty()) {
 						send(it->getClientFd(), "MODE -o requires a nickname\n", 28, 0);
@@ -369,7 +374,7 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 				}
 				else {
 					if (targetNick.empty()) {
-						send(it->getClientFd(), "MODE -o requires a nickname\n", 28, 0);
+						send(it->getClientFd(), "MODE +o requires a nickname\n", 28, 0);
 						continue;
 					}
 					std::vector<Client>::iterator targetIt = searchClientByNick(targetNick);
@@ -388,7 +393,8 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 			}
 			else if (flag == 'l') {
 				if (add) {
-					std::string limitStr = getFirstWord(input.substr(6 + channelName.length() + anyChanges.length() + 2));
+					std::string limitStr;
+					args.size() > 3 ? limitStr = args[3] : limitStr = "";
 					if (limitStr.empty()) {
 						send(it->getClientFd(), "MODE +l requires a limit\n", 25, 0);
 						continue;
