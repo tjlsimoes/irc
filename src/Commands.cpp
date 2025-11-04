@@ -381,27 +381,33 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 {
-	std::string channelName = getFirstWord(input.substr(5));
+	std::string reason;
+	input.substr(4).empty() ? reason = "" : reason = getFirstWord(input.substr(5));
 
-	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
-	if (it_channel == channels.end()) {
-		send(it->getClientFd(), "No such channel.\n", 17, 0);
-		return;
-	}
+	std::string message = ":" + it->getNickname() + "!" + it->getUsername() +
+                          "@host QUIT " + reason + "\r\n";
 
-	std::cout << "Client " << it->getClientFd() << " quit safely " << std::endl;
-	for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
-		it_channel->removeClient(*it);
-		if (it_channel->isOperator(*it)) {
-			it_channel->removeOp(*it);
-		}
-	}
+    // Send QUIT to all channels the client is in
+    for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
+        if (it_channel->hasClient(*it)) {
+            it_channel->removeClient(*it);
+            if (it_channel->isOperator(*it)) {
+                it_channel->removeOp(*it);
+            }
 
-	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host PART #" + channelName + "\r\n";
-	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
-		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
-	}
-	removeClient(it->getClientFd());
+            // Send QUIT to all remaining clients in this channel
+            const std::vector<Client>& clients = it_channel->getClients();
+            for (size_t i = 0; i < clients.size(); ++i) {
+                if (clients[i].getClientFd() != it->getClientFd()) {
+                    send(clients[i].getClientFd(), message.c_str(), message.length(), 0);
+                }
+            }
+        }
+    }
+
+    // Log and remove client
+    std::cout << "Client " << it->getClientFd() << " quit: " << reason << std::endl;
+    removeClient(it->getClientFd());
 }
 
 void Server::handleTopic(std::string input, std::vector<Client>::iterator it)

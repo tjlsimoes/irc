@@ -106,7 +106,8 @@ bool Server::checkCommands(std::string input, std::vector<Client>::iterator it)
 		handleMode(input, it);
 		return true;
 	}
-	else if (input.compare(0, 5, "QUIT ") == 0) {
+	else if (input.compare(0, 5, "QUIT ") == 0
+			|| (input.length() == 4 && input.compare(0, 4, "QUIT") == 0)) {
 		handleQuit(input, it);
 		return true;
 	}
