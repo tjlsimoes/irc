@@ -412,12 +412,24 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 {
-	std::string channelName = getFirstWord(input.substr(7));
+	std::string rest = input.substr(6);                 // after "TOPIC "
+	std::string channelName = getFirstWord(rest);
+	if (channelName.empty()) {
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " TOPIC: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
+	}
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 
 	if (it_channel == channels.end()) {
 		send(it->getClientFd(), "No such channel.\n", 17, 0);
 		return;
+	}
+
+	if (!it_channel->hasClient(*it)) {
+		std::string message = ":ircserver.local 442 " + it->getNickname() + " :You're not on that channel" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
 	}
 
 	if (input.length() <= 7 + channelName.length()) {
@@ -438,7 +450,8 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	std::string newTopic = input.substr(7 + channelName.length() + 2);
+	std::string newTopic ;
+	!rest.substr(channelName.length()).empty() ? newTopic = getFirstWord(rest.substr(channelName.length() + 2)) : newTopic = "";;
 	it_channel->setTopic(newTopic, it->getNickname());
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host TOPIC #" + channelName + " :" + newTopic + "\r\n";
 	for (size_t i = 0; i < it_channel->getClients().size(); ++i) {
