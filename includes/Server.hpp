@@ -72,7 +72,9 @@ class Server
 
 
 	// commands
+	bool uniqueNickname(std::string const & newNickname);
 	void changeNickname(std::string input, std::vector<Client>::iterator it);
+	bool uniqueUsername(std::string const & newUsername);
 	void changeUsername(std::string input, std::vector<Client>::iterator it);
 	void joinChannel(std::string input, std::vector<Client>::iterator it);
 	void leaveChannel(std::string input, std::vector<Client>::iterator it);

@@ -194,3 +194,29 @@ bool Channel::hasClient(const Client& client) const {
 			return true;
 	return false;
 }
+
+void Channel::updateNickname(std::string const & newNickname, const Client & client) {
+	for (size_t i = 0; i < clients.size(); ++i) {
+		if (clients[i].getClientFd() == client.getClientFd())
+			clients[i].setNickname(newNickname);
+	}
+	for (size_t i = 0; i < ops.size(); ++i) {
+		if (ops[i].getClientFd() == client.getClientFd())
+			ops[i].setNickname(newNickname);
+	}
+}
+
+void Channel::updateUsername(std::string const & newUsername, const Client & client) {
+	for (size_t i = 0; i < clients.size(); ++i) {
+		if (clients[i].getClientFd() == client.getClientFd()) {
+			clients[i].setUsername(newUsername);
+			clients[i].setUsernameDefined(true);
+		}
+	}
+	for (size_t i = 0; i < ops.size(); ++i) {
+		if (ops[i].getClientFd() == client.getClientFd()) {
+			clients[i].setUsername(newUsername);
+			clients[i].setUsernameDefined(true);
+		}
+	}
+}

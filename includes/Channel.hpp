@@ -63,6 +63,9 @@ class Channel
 		int	getLimit() const;
 
 		bool hasClient(const Client& client) const;
+
+		void updateNickname(std::string const & newUsername, const Client & client);
+		void updateUsername(std::string const & newUsername, const Client & client);
 };
 
 #endif

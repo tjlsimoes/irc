@@ -72,23 +72,47 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 	send(it->getClientFd(), message.c_str(), message.length(), 0);
 }
 
+bool Server::uniqueNickname(std::string const & newNickname) {
+	std::vector<Client>::iterator it = clients.begin();
+	for (; it != clients.end(); ++it) {
+		if (it->getNickname() == newNickname) {
+			return false;
+		}
+	}
+	return true;
+}
+
 void Server::changeNickname(std::string input, std::vector<Client>::iterator it)
 {
-	std::string nick = input.substr(5);
-	std::string new_nick = getFirstWord(nick);
-	if (new_nick.empty()) {
+	std::string const nick = input.substr(5);
+	std::string const new_nick = getFirstWord(nick);
+	if (new_nick.empty() || !uniqueNickname(new_nick)) {
 		send(it->getClientFd(), "Invalid nickname!\n", 18, 0);
 		return ;
 	}
-	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host NICK :" + new_nick + "\r\n";
+
 	for (size_t i = 0; i < channels.size(); ++i) {
-		for (size_t j = 0; j < channels[i].getClients().size(); ++j) {
-			std::cout << "Sending nickname change to user " << channels[i].getClients()[j].getUsername() << std::endl;
-			send(channels[i].getClients()[j].getClientFd(), message.c_str(), message.length(), 0);
+		if (channels[i].hasClient(*it)) {
+			std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host NICK :" + new_nick + "\r\n";
+			for (size_t j = 0; j < channels[i].getClients().size(); ++j) {
+				std::cout << "Sending nickname change to user " << channels[i].getClients()[j].getUsername() << std::endl;
+				send(channels[i].getClients()[j].getClientFd(), message.c_str(), message.length(), 0);
+			}
+			channels[i].updateNickname(new_nick, *it);
 		}
 	}
 	it->setNickname(new_nick);
 	std::cout << "Client " << it->getClientFd() << " changed nickname to " << new_nick << std::endl;
+}
+
+bool Server::uniqueUsername(std::string const & newUsername) {
+	std::vector<Client>::iterator it = clients.begin();
+	for (; it != clients.end(); ++it) {
+		if (it->getUsername() == newUsername) {
+			return false;
+		}
+	}
+	return true;
 }
 
 void Server::changeUsername(std::string input, std::vector<Client>::iterator it)
@@ -99,9 +123,15 @@ void Server::changeUsername(std::string input, std::vector<Client>::iterator it)
 	}
 	std::string user = input.substr(5);
 	std::string newUser = getFirstWord(user);
-	if (newUser.empty()) {
+	if (newUser.empty() || !uniqueUsername(newUser)) {
 		send(it->getClientFd(), "Invalid username!\n", 18, 0);
 		return ;
+	}
+
+	for (size_t i = 0; i < channels.size(); ++i) {
+		if (channels[i].hasClient(*it)) {
+			channels[i].updateNickname(newUser, *it);
+		}
 	}
 	it->setUsernameDefined(true);
 	it->setUsername(newUser);
