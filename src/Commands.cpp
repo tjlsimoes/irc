@@ -140,11 +140,12 @@ void Server::leaveChannel(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleWho(std::string input, std::vector<Client>::iterator it)
 {
-	std::string channelName = getFirstWord(input.substr(5));
-	if (channelName.empty()) {
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() < 2) {
 		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
 		return;
 	}
+	std::string const & channelName = args[1];
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 	if (it_channel == channels.end()) {
 		send(it->getClientFd(), "No such channel.\n", 17, 0);
