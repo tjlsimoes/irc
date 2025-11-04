@@ -110,12 +110,13 @@ void Server::changeUsername(std::string input, std::vector<Client>::iterator it)
 
 void Server::leaveChannel(std::string input, std::vector<Client>::iterator it)
 {
-	std::string channel = getFirstWord(input.substr(6));
-	std::cout << channel << std::endl;
-	if (channel.empty()) {
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() < 2) {
 		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
 		return ;
 	}
+	std::string channel;
+	args[1][0] == '#' ? channel = args[1].substr(1) : channel = args[1];
 	std::vector<Channel>::iterator it_channel = searchChannel(channel);
 	if (it_channel == channels.end()) {
 		send(it->getClientFd(), "You are not in this channel!\n", 29, 0);
