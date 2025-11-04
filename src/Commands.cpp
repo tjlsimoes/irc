@@ -176,27 +176,66 @@ std::vector<Client>::iterator Server::searchClientByNick(std::string const & nic
 void Server::handleInvite(std::string input, std::vector<Client>::iterator it)
 {
 	// INVITE nick #channel
-	std::string rest = input.substr(7);
-	std::string nick = getFirstWord(rest);
-	std::string chan = getFirstWord(rest.substr(nick.length() + 1));
-	if (nick.empty() || chan.empty()) {
-		send(it->getClientFd(), "Usage: INVITE <nick> <channel>\n", 31, 0);
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() < 3) {
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " INVITE: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return ;
+	}
+	std::string const & nick = args[1];
+	std::string const & chan = args[2];
+
+	std::vector<Channel>::iterator const it_channel = searchChannel(chan);
+	// Invalid channel
+	if (it_channel == channels.end()) {
+		// find target client
+		std::vector<Client>::iterator const target = searchClientByNick(nick);
+		if (target == clients.end()) {
+			std::string message = ":ircserver.local 401 " + it->getNickname()
+							+ " #" + chan + " :No such nickname\r\n";
+			send(it->getClientFd(), message.c_str(), message.length(), 0);
+			return;
+		}
+		// 341 RPL_INVITING
+		std::string message = ":ircserver.local 341 " + it->getNickname()
+						  + " " + nick + " #" + chan + "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+
+		// Notify the invited user
+		message = ":" + it->getNickname()
+			+ "!" + it->getUsername() + "@host INVITE " + nick
+			+ " :#" + chan + "\r\n";
+		send(target->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
 
-	std::vector<Channel>::iterator it_channel = searchChannel(chan);
-	if (it_channel == channels.end()
-		|| !it_channel->isOperator(*it)) {
-		send(it->getClientFd(),
-			 "You need to be a channel operator to invite.\n", 45, 0);
+	if (it_channel->isInviteOnly() && !it_channel->isOperator(*it)) {
+		std::string message = ":ircserver.local 482 " + it->getNickname()
+						+ " #" + chan + " :You're not a channel operator\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
+	} else if (it_channel->isInviteOnly() && !it_channel->hasClient(*it))
+	{
+		std::string message = ":ircserver.local 442 " + it->getNickname()
+						+ " #" + chan + " :You're not part of the channel\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		return;
+	}
+	for (size_t k = 0; k < it_channel->getClients().size(); ++k) {
+		if (it_channel->getClients()[k].getNickname() == nick) {
+			std::string message = ":ircserver.local 443 " + it->getNickname()
+						+ " #" + chan + " :User already on specified channel\r\n";
+			send(it->getClientFd(), message.c_str(), message.length(), 0);
+			return;
 		}
+	}
 
 	// find target client
 	std::vector<Client>::iterator target = searchClientByNick(nick);
 	if (target == clients.end()) {
-		send(it->getClientFd(),
-			 "No such nick.\n", 14, 0);
+		std::string message = ":ircserver.local 401 " + it->getNickname()
+						+ " #" + chan + " :No such nickname\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return;
 	}
 
