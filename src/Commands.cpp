@@ -283,9 +283,8 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 		std::string modes;
 		std::string params;
 		for (size_t i = 0; i < it_channel->getFlags().size(); i++) {
-			if (it_channel->getFlags()[i] != 'k')
-				modes += it_channel->getFlags()[i];
-			else if (it_channel->getFlags()[i] != 'l' && it_channel->hasLimit()) {
+			modes += it_channel->getFlags()[i];
+			if (it_channel->hasLimit() && it_channel->getFlags()[i] == 'l') {
 				std::ostringstream oss;
 				oss << it_channel->getLimit();
 				params += " " + oss.str();
