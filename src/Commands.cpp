@@ -381,9 +381,17 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 
 void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 {
+	std::vector<std::string> const args = argsSplit(input);
 	std::string reason;
-	input.substr(4).empty() ? reason = "" : reason = getFirstWord(input.substr(5));
-
+	if (args.size() >= 2) {
+		for (unsigned int i = 1; i < args.size(); i++) {
+			if (i == 1 && args[i][0] == ':') {
+				reason += args[i].substr(1) + " ";
+				continue ;
+			}
+			reason += args[i] + " ";
+		}
+	}
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() +
                           "@host QUIT " + reason + "\r\n";
 
@@ -396,10 +404,10 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
             }
 
             // Send QUIT to all remaining clients in this channel
-            const std::vector<Client>& clients = it_channel->getClients();
-            for (size_t i = 0; i < clients.size(); ++i) {
-                if (clients[i].getClientFd() != it->getClientFd()) {
-                    send(clients[i].getClientFd(), message.c_str(), message.length(), 0);
+            const std::vector<Client>& channelClients = it_channel->getClients();
+            for (size_t i = 0; i < channelClients.size(); ++i) {
+                if (channelClients[i].getClientFd() != it->getClientFd()) {
+                    send(channelClients[i].getClientFd(), message.c_str(), message.length(), 0);
                 }
             }
         }
