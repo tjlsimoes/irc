@@ -89,5 +89,6 @@ class Server
 
 std::string getFirstWord(const std::string& input);
 std::string timeToString(time_t time);
+std::vector<std::string> argsSplit(const std::string& s);
 
 #endif

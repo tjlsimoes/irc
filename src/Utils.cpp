@@ -14,3 +14,17 @@ std::string timeToString(time_t time)
 	ss << time;
 	return ss.str();
 }
+
+std::vector<std::string> argsSplit(const std::string& s)
+{
+	std::vector<std::string> result;
+	std::istringstream iss(s);
+	std::string token;
+
+	while (iss >> token) {
+		if (token.empty())
+			continue;
+		result.push_back(token);
+	}
+	return result;
+}
