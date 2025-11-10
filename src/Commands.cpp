@@ -3,73 +3,89 @@
 void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 {
 	bool operatorFlag = false;
-	std::string rest = input.substr(5);                 // after "JOIN "
-	std::string channelName = getFirstWord(rest);
-	std::string providedKey;
-	!rest.substr(channelName.length()).empty() ? providedKey = getFirstWord(rest.substr(channelName.length() + 1)) : providedKey = "";
-	if (channelName.empty()) {
-		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
+	std::vector<std::string> const args = argsSplit(input);
+	if (args.size() < 2) {
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " JOIN: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
-	if (it_channel == channels.end()) {
-		channels.push_back(Channel(channelName, this));
-		operatorFlag = true;
-	}
-	it_channel = searchChannel(channelName);
-	
-	//check if client is already in channel
-	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
-		if (it_channel->getClients()[i].getClientFd() == it->getClientFd()) {
-			send(it->getClientFd(), "You are already in this channel!\n", 33, 0);
-			return ;
+
+	int keys_used = 0;
+	std::vector<std::string> const joinChannels = commaSplit(args[1]);
+	for (size_t k = 0; k < joinChannels.size(); ++k) {
+		std::string const & channelName = joinChannels[k];
+
+		std::vector<Channel>::iterator it_channel = searchChannel(channelName);
+		if (it_channel == channels.end()) {
+			channels.push_back(Channel(channelName, this));
+			operatorFlag = true;
 		}
+		it_channel = searchChannel(channelName);
+
+		//check if client is already in channel
+		for (size_t i = 0; i < it_channel->getClients().size(); i++) {
+			if (it_channel->getClients()[i].getClientFd() == it->getClientFd()) {
+				send(it->getClientFd(), "You are already in this channel!\n", 33, 0);
+				return ;
+			}
+		}
+
+		if (it_channel->isInviteOnly()
+			&& !it_channel->isInvited(it->getNickname())
+			&& !it_channel->isOperator(*it)) {
+			std::string message = ":ircserver.local 473 " + it->getNickname()
+							+ " #" + channelName + " :Cannot join channel (+i)\r\n";
+			send(it->getClientFd(), message.c_str(), message.length(), 0);
+			return;
+		}
+		if (it_channel->hasKey()) {
+			if (args.size() < 3) {
+				std::string message = ":ircserver.local 461 " + it->getNickname() + " JOIN: not enough parameters" "\r\n";
+				send(it->getClientFd(), message.c_str(), message.length(), 0);
+				return ;
+			}
+			std::vector<std::string> joinKeys = commaSplit(args[2]);
+			if (!it_channel->checkKey(joinKeys[keys_used])) {
+				std::string message = ":ircserver.local 475 " + it->getNickname()
+								+ " #" + channelName + " :Cannot join channel (+k)\r\n";
+				send(it->getClientFd(), message.c_str(), message.length(), 0);
+				return;
+			}
+			keys_used++;
+		}
+		if (it_channel->hasLimit()
+			&& it_channel->getClients().size() >= static_cast<size_t>(it_channel->getLimit()))
+		{
+			std::string message = ":ircserver.local 471 " + it->getNickname()
+							+ " #" + channelName + " :Cannot join channel (+l)\r\n";
+			send(it->getClientFd(), message.c_str(), message.length(), 0);
+			return;
+		}
+
+		it_channel->addClient(*it);
+		if (operatorFlag) {
+			it_channel->addOp(*it);
+		}
+		std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host JOIN :#" + channelName + "\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		std::cout << "Client " << it->getClientFd() << " joined channel " << channelName << std::endl;
+		std::string extraMessage = ":" + it->getNickname() + "!" + it->getUsername() + "@host JOIN :" + channelName + "\n";
+		std::string allNames;
+		for (size_t i = 0; i < it_channel->getClients().size(); i++) {
+			if (it_channel->isOperator(it_channel->getClients()[i])) {
+				allNames += "@";
+			}
+			allNames += it_channel->getClients()[i].getNickname() + " ";
+			if (it_channel->getClients()[i].getClientFd() != it->getClientFd())
+				send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
+		}
+		message = ":ircserver.local 353 " + it->getNickname() + " = #" + channelName + " :" + allNames + "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		message = ":ircserver.local 366 " + it->getNickname() + " #" + channelName + " :End of /NAMES list\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+
 	}
 
-	if (it_channel->isInviteOnly()
-		&& !it_channel->isInvited(it->getNickname())
-		&& !it_channel->isOperator(*it)) {
-		std::string message = ":ircserver.local 473 " + it->getNickname()
-						+ " #" + channelName + " :Cannot join channel (+i)\r\n";
-		send(it->getClientFd(), message.c_str(), message.length(), 0);
-		return;
-	}
-	if (it_channel->hasKey() && !it_channel->checkKey(providedKey)) {
-		std::string message = ":ircserver.local 475 " + it->getNickname()
-						+ " #" + channelName + " :Cannot join channel (+k)\r\n";
-		send(it->getClientFd(), message.c_str(), message.length(), 0);
-		return;
-	}
-	if (it_channel->hasLimit()
-		&& it_channel->getClients().size() >= static_cast<size_t>(it_channel->getLimit()))
-	{
-		std::string message = ":ircserver.local 471 " + it->getNickname()
-						+ " #" + channelName + " :Cannot join channel (+l)\r\n";
-		send(it->getClientFd(), message.c_str(), message.length(), 0);
-		return;
-	}
-
-	it_channel->addClient(*it);
-	if (operatorFlag) {
-		it_channel->addOp(*it);
-	}
-	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host JOIN :#" + channelName + "\n";
-	send(it->getClientFd(), message.c_str(), message.length(), 0);
-	std::cout << "Client " << it->getClientFd() << " joined channel " << channelName << std::endl;
-	std::string extraMessage = ":" + it->getNickname() + "!" + it->getUsername() + "@host JOIN :" + channelName + "\n";
-	std::string allNames;
-	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
-		if (it_channel->isOperator(it_channel->getClients()[i])) {
-			allNames += "@";
-		}
-		allNames += it_channel->getClients()[i].getNickname() + " ";
-		if (it_channel->getClients()[i].getClientFd() != it->getClientFd())
-			send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
-	}
-	message = ":ircserver.local 353 " + it->getNickname() + " = #" + channelName + " :" + allNames + "\r\n";
-	send(it->getClientFd(), message.c_str(), message.length(), 0);
-	message = ":ircserver.local 366 " + it->getNickname() + " #" + channelName + " :End of /NAMES list\r\n";
-	send(it->getClientFd(), message.c_str(), message.length(), 0);
 }
 
 bool Server::uniqueNickname(std::string const & newNickname) {

@@ -15,7 +15,7 @@ std::string timeToString(time_t time)
 	return ss.str();
 }
 
-std::vector<std::string> argsSplit(const std::string& s)
+std::vector<std::string> argsSplit(const std::string & s)
 {
 	std::vector<std::string> result;
 	std::istringstream iss(s);
@@ -27,4 +27,15 @@ std::vector<std::string> argsSplit(const std::string& s)
 		result.push_back(token);
 	}
 	return result;
+}
+
+std::vector<std::string> commaSplit(const std::string & s) {
+	std::stringstream ss(s);
+	std::string segment;
+	std::vector<std::string> segments;
+
+	while(std::getline(ss, segment, ',')) {
+		segments.push_back(segment);
+	}
+	return segments;
 }
