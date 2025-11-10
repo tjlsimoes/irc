@@ -22,6 +22,7 @@ class Client
 		void setUsername(const std::string& user);
 		std::string getUsername() const;
 		std::string getNickname() const;
+		struct sockaddr_in getClientAddr() const;
 		void setNickname(const std::string& nick);
 		bool isClientAuthenticated() const;
 		void changeAuthenticationStatus();

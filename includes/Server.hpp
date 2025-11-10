@@ -81,6 +81,7 @@ class Server
 
 
 	// commands
+	static bool validChannel(std::string const &name);
 	bool uniqueNickname(std::string const & newNickname);
 	void changeNickname(std::string input, std::vector<Client>::iterator it);
 	bool uniqueUsername(std::string const & newUsername);

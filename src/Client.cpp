@@ -70,3 +70,8 @@ bool Client::isUsernameDefined() const
 {
 	return usernameDefined;
 }
+
+struct sockaddr_in Client::getClientAddr() const
+{
+	return clientAddr;
+}

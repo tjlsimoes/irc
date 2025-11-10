@@ -302,6 +302,9 @@ void Server::runServerLoop()
 	while (running && !Server::SignalHandler::quit) {
 		int poll_result = poll(&pollFds[0], pollFds.size(), -1);
 		
+		if (pollFds.empty()) {
+			continue;
+		}
 		if (poll_result == -1) {
 			if (errno == EINTR)
 				continue;
