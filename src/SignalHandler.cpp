@@ -16,6 +16,11 @@ bool Server::SignalHandler::setup() {
         std::cerr << "Error: cannot set SIGINT handler\n";
         return false;
     }
+
+    if (sigaction(SIGQUIT, &sa, NULL) == -1) {
+        std::cerr << "Error: cannot set SIGQUIT handler\n";
+        return false;
+    }
     return true;
 }
 
