@@ -158,30 +158,35 @@ void Server::leaveChannel(std::string input, std::vector<Client>::iterator it)
 {
 	std::vector<std::string> const args = argsSplit(input);
 	if (args.size() < 2) {
-		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
+		std::string message = ":ircserver.local 461 " + it->getNickname() + " JOIN: not enough parameters" "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::string channel;
-	args[1][0] == '#' ? channel = args[1].substr(1) : channel = args[1];
-	std::vector<Channel>::iterator it_channel = searchChannel(channel);
-	if (it_channel == channels.end()) {
-		send(it->getClientFd(), "You are not in this channel!\n", 29, 0);
-		return ;
-	}
-	it_channel->removeClient(*it);
-	if (it_channel->isOperator(*it)) {
-		it_channel->removeOp(*it);
-	}
-	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host PART #" + channel + "\n";
-	send(it->getClientFd(), message.c_str(), message.length(), 0);
-	message = ":" + it->getNickname() + "!" + it->getUsername() + "@host PART #" + channel + "\r\n";
-	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
-		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
-	}
-	std::cout << "Client " << it->getClientFd() << " left channel #" << channel << std::endl;
-	if (it_channel->getClients().empty()) {
-		channels.erase(it_channel);
-		std::cout << "Channel #" << channel << " deleted as it has no clients left." << std::endl;
+	std::vector<std::string> const partChannels = commaSplit(args[1]);
+	for (size_t k = 0; k < partChannels.size(); ++k) {
+		std::string channel;
+		partChannels[k][0] == '#' ? channel = partChannels[k].substr(1) : channel = partChannels[k];
+
+		std::vector<Channel>::iterator it_channel = searchChannel(channel);
+		if (it_channel == channels.end()) {
+			send(it->getClientFd(), "You are not in this channel!\n", 29, 0);
+			return ;
+		}
+		it_channel->removeClient(*it);
+		if (it_channel->isOperator(*it)) {
+			it_channel->removeOp(*it);
+		}
+		std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host PART #" + channel + "\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+		message = ":" + it->getNickname() + "!" + it->getUsername() + "@host PART #" + channel + "\r\n";
+		for (size_t i = 0; i < it_channel->getClients().size(); i++) {
+			send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
+		}
+		std::cout << "Client " << it->getClientFd() << " left channel #" << channel << std::endl;
+		if (it_channel->getClients().empty()) {
+			channels.erase(it_channel);
+			std::cout << "Channel #" << channel << " deleted as it has no clients left." << std::endl;
+		}
 	}
 }
 
