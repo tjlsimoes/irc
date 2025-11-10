@@ -6,7 +6,7 @@ CXXFLAGS = -Wall -Wextra -Werror -g -std=c++98
 
 SRC = $(addprefix ./src/, $(SOURCES))
 
-SOURCES = main.cpp Server.cpp Client.cpp Commands.cpp Utils.cpp Channel.cpp
+SOURCES = main.cpp Server.cpp Client.cpp Commands.cpp Utils.cpp Channel.cpp SignalHandler.cpp
 
 OBJ = $(SRC:.cpp=.o)
 

@@ -299,7 +299,7 @@ void Server::runServerLoop()
 	running = true;
 	std::cout << "Server started. Waiting for connections..." << std::endl;
 
-	while (running) {
+	while (running && !Server::SignalHandler::quit) {
 		int poll_result = poll(&pollFds[0], pollFds.size(), -1);
 		
 		if (poll_result == -1) {

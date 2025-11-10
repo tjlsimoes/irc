@@ -27,6 +27,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <sys/types.h>
+#include <signal.h>
 #include "Client.hpp"
 #include "Channel.hpp"
 
@@ -50,6 +51,14 @@ class Server
 
 	public:
 	Server();
+
+	class SignalHandler {
+	public:
+		static bool quit;
+		static bool setup();
+		static void handler(int, siginfo_t*, void*);
+	};
+
 	int getPort();
 	void setPort(int num);
 	std::string getPassword();

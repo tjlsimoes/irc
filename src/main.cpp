@@ -6,7 +6,10 @@ int main(int argc, char **argv)
 		std::cout << "Wrong amount of arguments" << std::endl;
 		return (1);
 	}
-	
+
+	if (!Server::SignalHandler::setup())
+		exit(1);
+
 	Server server;
 
 	try {
