@@ -118,21 +118,31 @@ void Server::changeNickname(std::string input, std::vector<Client>::iterator it)
 {
 	std::string const nick = input.substr(5);
 	std::string const new_nick = getFirstWord(nick);
-	if (new_nick.empty() || !uniqueNickname(new_nick)) {
-		if (it->getNickname() == "Guest " + it->getClientFd()) {
-			std::cout << "Client " << it->getClientFd() << " tried to change nickname to an invalid or already used nickname: " << new_nick << std::endl;
-			return ;
-		}
-		std::string message = ":ircserver.local 433 * " + new_nick + " :Nickname is already in use.\r\n";
-		send(it->getClientFd(), message.c_str(), message.size(), 0);
-		std::cout << "Client " << it->getClientFd() << " tried to change nickname to an invalid or already used nickname: " << new_nick << std::endl;
-		return ;
+
+	// If empty or same as current, ignore (no change needed)
+	if (new_nick.empty() || new_nick == it->getNickname()) {
+		return;
 	}
 
-	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host NICK :" + new_nick + "\r\n";
-	send(it->getClientFd(), message.c_str(), message.length(), 0);
+	// Nickname already taken by another client
+	if (!uniqueNickname(new_nick)) {
+		std::string currentNick = it->getNickname();
+		if (currentNick.empty())
+			currentNick = "*";
+		std::string message = ":ircserver.local 433 " + currentNick + " " + new_nick + " :Nickname is already in use\r\n";
+		send(it->getClientFd(), message.c_str(), message.size(), 0);
+		std::cout << "Client " << it->getClientFd() << " tried to change nickname to an already used nickname: " << new_nick << std::endl;
+		return;
+	}
+
+	if (!it->getNickname().empty()) {
+		std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host NICK :" + new_nick + "\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+	}
+
 	for (size_t i = 0; i < channels.size(); ++i) {
 		if (channels[i].hasClient(*it)) {
+			std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host NICK :" + new_nick + "\r\n";
 			for (size_t j = 0; j < channels[i].getClients().size(); ++j) {
 				if (channels[i].getClients()[j].getClientFd() == it->getClientFd())
 					continue;
@@ -142,7 +152,13 @@ void Server::changeNickname(std::string input, std::vector<Client>::iterator it)
 			channels[i].updateNickname(new_nick, *it);
 		}
 	}
+	
+	bool firstNick = !it->getNickname().empty();
 	it->setNickname(new_nick);
+	if (firstNick && it->isUsernameDefined()) {
+		std::string message = ":ircserver.local 001 " + it->getNickname() + " :Welcome to the Internet Relay Network " + it->getNickname() + "!" + it->getUsername() + "@host\r\n";
+		send(it->getClientFd(), message.c_str(), message.length(), 0);
+	}
 	std::cout << "Client " << it->getClientFd() << " changed nickname to " << new_nick << std::endl;
 }
 
@@ -515,29 +531,29 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 		}
 	}
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() +
-                          "@host QUIT " + reason + "\r\n";
+						  "@host QUIT " + reason + "\r\n";
 
-    // Send QUIT to all channels the client is in
-    for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
-        if (it_channel->hasClient(*it)) {
-            it_channel->removeClient(*it);
-            if (it_channel->isOperator(*it)) {
-                it_channel->removeOp(*it);
-            }
+	// Send QUIT to all channels the client is in
+	for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
+		if (it_channel->hasClient(*it)) {
+			it_channel->removeClient(*it);
+			if (it_channel->isOperator(*it)) {
+				it_channel->removeOp(*it);
+			}
 
-            // Send QUIT to all remaining clients in this channel
-            const std::vector<Client>& channelClients = it_channel->getClients();
-            for (size_t i = 0; i < channelClients.size(); ++i) {
-                if (channelClients[i].getClientFd() != it->getClientFd()) {
-                    send(channelClients[i].getClientFd(), message.c_str(), message.length(), 0);
-                }
-            }
-        }
-    }
+			// Send QUIT to all remaining clients in this channel
+			const std::vector<Client>& channelClients = it_channel->getClients();
+			for (size_t i = 0; i < channelClients.size(); ++i) {
+				if (channelClients[i].getClientFd() != it->getClientFd()) {
+					send(channelClients[i].getClientFd(), message.c_str(), message.length(), 0);
+				}
+			}
+		}
+	}
 
-    // Log and remove client
-    std::cout << "Client " << it->getClientFd() << " quit: " << reason << std::endl;
-    removeClient(it->getClientFd());
+	// Log and remove client
+	std::cout << "Client " << it->getClientFd() << " quit: " << reason << std::endl;
+	removeClient(it->getClientFd());
 }
 
 void Server::handleTopic(std::string input, std::vector<Client>::iterator it)

@@ -1,4 +1,5 @@
 #include "../includes/Client.hpp"
+#include "../includes/Server.hpp"
 
 Client::Client(int fd, struct sockaddr_in addr)
 	: clientFd(fd), clientAddr(addr)
@@ -10,6 +11,11 @@ Client::Client(int fd, struct sockaddr_in addr)
 	isAuthenticated = false;
 	serverOperator = false;
 	usernameDefined = false;
+}
+
+Client::~Client()
+{
+	
 }
 
 int Client::getClientFd() const

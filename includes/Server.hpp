@@ -73,6 +73,7 @@ class Server
 	void removeClient(int client_fd);
 	bool checkCommands(std::string input, std::vector<Client>::iterator it);
 	void sendMessageToAllClients(const std::string& message, int sender_fd);
+	void suddenQuit(std::vector<Client>::iterator it);
 	std::vector<std::string> split(const std::string& str);
 
 	std::vector<Channel>::iterator searchChannel(const std::string& channelName);

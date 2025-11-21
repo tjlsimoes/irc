@@ -1,4 +1,4 @@
-NAME = irc
+NAME = ircserv
 
 CXX = c++
 
@@ -17,7 +17,7 @@ all: $(NAME)
 
 $(NAME): $(OBJ)
 	@$(CXX) $(CXXFLAGS) $(OBJ) -o $@
-	@echo "irc built"
+	@echo "ircserv built"
 
 clean:
 	@rm -f $(OBJ)

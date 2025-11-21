@@ -279,12 +279,36 @@ void Server::handleClientData(int client_fd)
 	
 }
 
+void Server::suddenQuit(std::vector<Client>::iterator it)
+{
+	std::string message = ":" + it->getNickname() + "!" + it->getUsername() +
+						  "@host QUIT " + "\r\n";
+	for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
+		if (it_channel->hasClient(*it)) {
+			it_channel->removeClient(*it);
+			if (it_channel->isOperator(*it)) {
+				it_channel->removeOp(*it);
+			}
+
+			// Send QUIT to all remaining clients in this channel
+			const std::vector<Client>& channelClients = it_channel->getClients();
+			for (size_t i = 0; i < channelClients.size(); ++i) {
+				if (channelClients[i].getClientFd() != it->getClientFd()) {
+					send(channelClients[i].getClientFd(), message.c_str(), message.length(), 0);
+				}
+			}
+		}
+	}
+}
+
 void Server::removeClient(int client_fd)
 {
 	std::cout << "Client disconnected (fd: " << client_fd << ")" << std::endl;
 	
 	for (std::vector<struct pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it) {
 		if (it->fd == client_fd) {
+			std::vector<Client>::iterator it2 = searchClient(client_fd);
+			suddenQuit(it2);
 			pollFds.erase(it);
 			clients.erase(searchClient(client_fd));
 			break;

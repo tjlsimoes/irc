@@ -27,6 +27,7 @@ class Client
 		bool isClientAuthenticated() const;
 		void changeAuthenticationStatus();
 		Client(int fd, struct sockaddr_in addr);
+		~Client();
 		bool isServerOperator() const;
 		void changeOperatorStatus();
 		void setUsernameDefined(bool status);
