@@ -69,12 +69,13 @@ class Server
 	void listenSocket();
 	void runServerLoop();
 	void acceptNewConnection();
-	void handleClientData(int client_fd);
+	bool handleClientData(int client_fd);
 	void removeClient(int client_fd);
 	bool checkCommands(std::string input, std::vector<Client>::iterator it);
 	void sendMessageToAllClients(const std::string& message, int sender_fd);
 	void suddenQuit(std::vector<Client>::iterator it);
 	std::vector<std::string> split(const std::string& str);
+	void sendPrivateMessage(const std::string input, int sender_fd);
 
 	std::vector<Channel>::iterator searchChannel(const std::string& channelName);
 	std::vector<Client>::iterator searchClient(int client_fd);

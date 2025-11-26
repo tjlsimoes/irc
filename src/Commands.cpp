@@ -47,7 +47,7 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 		}
 
 		if (it_channel->isInviteOnly()
-			&& !it_channel->isInvited(it->getNickname())
+			&& !it_channel->isInvited(it->getClientFd())
 			&& !it_channel->isOperator(*it)) {
 			std::string message = ":ircserver.local 473 " + it->getNickname()
 							+ " #" + channelName + " :Cannot join channel (+i)\r\n";
@@ -79,6 +79,7 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 		}
 
 		it_channel->addClient(*it);
+		it_channel->removeInvite(it->getClientFd());
 		if (operatorFlag) {
 			it_channel->addOp(*it);
 		}
@@ -277,9 +278,11 @@ void Server::handleInvite(std::string input, std::vector<Client>::iterator it)
 		return ;
 	}
 	std::string const & nick = args[1];
-	std::string const & chan = args[2];
+	std::string const & chan = args[2].substr(1, args[2].size());
+	std::cout << "Invite command: nick=" << nick << ", chan=" << chan << std::endl;
 
 	std::vector<Channel>::iterator const it_channel = searchChannel(chan);
+	std::cout << it_channel->getName() << std::endl;
 	// Invalid channel
 	if (it_channel == channels.end()) {
 		// find target client
@@ -333,7 +336,7 @@ void Server::handleInvite(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	it_channel->addInvite(nick);
+	it_channel->addInvite(target->getClientFd());
 
 	// 341 RPL_INVITING
 	std::string message = ":ircserver.local 341 " + it->getNickname()
@@ -362,7 +365,7 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::string const & channelName = args[1].substr(1, args[1].size());;
+	std::string const & channelName = args[1].substr(1, args[1].size());
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 	if (it_channel == channels.end()) {
 		std::string message = ":ircserver.local 403 " + it->getNickname() + " MODE: no such channel" "\r\n";
@@ -406,7 +409,6 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 			}
 			else if (flag == '+')
 				continue ;
-
 
 			if (flag == 'i') {
 				it_channel->setInviteOnly(add);
@@ -553,7 +555,6 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 
 	// Log and remove client
 	std::cout << "Client " << it->getClientFd() << " quit: " << reason << std::endl;
-	removeClient(it->getClientFd());
 }
 
 void Server::handleTopic(std::string input, std::vector<Client>::iterator it)

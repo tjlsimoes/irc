@@ -106,11 +106,6 @@ bool Server::checkCommands(std::string input, std::vector<Client>::iterator it)
 		handleMode(input, it);
 		return true;
 	}
-	else if (input.compare(0, 5, "QUIT ") == 0
-			|| (input.length() == 4 && input.compare(0, 4, "QUIT") == 0)) {
-		handleQuit(input, it);
-		return true;
-	}
 	else if (input.compare(0, 6, "TOPIC ") == 0) {
 		handleTopic(input, it);
 		return true;
@@ -126,9 +121,28 @@ bool Server::checkCommands(std::string input, std::vector<Client>::iterator it)
 	return false;
 }
 
+void Server::sendPrivateMessage(const std::string input, int sender_fd)
+{
+	if (input.substr(0, 8) != "PRIVMSG ") {
+		return; // Not a private message
+	}
+	std::string targetNick = getFirstWord(input.substr(8));
+	std::cout << targetNick << std::endl;
+	std::vector<Client>::iterator target_it = searchClientByNick(targetNick);
+	if (target_it == clients.end()) {
+		return; // Target client not found
+	}
+
+	std::vector<Client>::iterator sender_it = searchClient(sender_fd);
+	std::string message = ":" + sender_it->getNickname() + "!" + sender_it->getUsername() + "@host"
+		+ " PRIVMSG " + target_it->getNickname() + " :" + input.substr(8 + getFirstWord(input.substr(8)).length() + 2) + "\n";
+	send(target_it->getClientFd(), message.c_str(), message.length(), 0);
+}
+
 void Server::sendMessageToAllClients(const std::string& message, int sender_fd)
 {
 	if (message.size() < 10 || message.substr(0, 9) != "PRIVMSG #") {
+		sendPrivateMessage(message, sender_fd);
 		return; // Not a channel message
 	}
 	std::string channelName = getFirstWord(message.substr(9));
@@ -226,16 +240,16 @@ void Server::acceptNewConnection()
 	send(client_fd, "Input password!\n", 16, 0);
 }
 
-void Server::handleClientData(int client_fd)
+bool Server::handleClientData(int client_fd)
 {
 	char buffer[1024];
 	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 	
 	if (bytes_read <= 0) {
 		if (bytes_read == 0 || (errno != EAGAIN && errno != EWOULDBLOCK)) {
-			removeClient(client_fd);
+			return false;
 		}
-		return;
+		return false;
 	}
 	buffer[bytes_read] = '\0';
 
@@ -273,14 +287,23 @@ void Server::handleClientData(int client_fd)
 			}
 			continue;
 		}
-		if (checkCommands(input, it) == false)
-			sendMessageToAllClients(input, client_fd);
+		if (checkCommands(input, it) == false) {
+			if (input.compare(0, 5, "QUIT ") == 0
+				|| (input.length() == 4 && input.compare(0, 4, "QUIT") == 0)) {
+				handleQuit(input, it);
+				return false;
+			}
+			else {
+				sendMessageToAllClients(input, client_fd);
+			}
+		}
 	}
-	
+	return true;
 }
 
 void Server::suddenQuit(std::vector<Client>::iterator it)
 {
+	std::cout << "AQUIIIII 3" << std::endl;
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() +
 						  "@host QUIT " + "\r\n";
 	for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
@@ -299,6 +322,18 @@ void Server::suddenQuit(std::vector<Client>::iterator it)
 			}
 		}
 	}
+
+	std::cout << "Client disconnected (fd: " << it->getClientFd() << ")" << std::endl;
+	int client_fd = it->getClientFd();
+	
+	for (std::vector<struct pollfd>::iterator it2 = pollFds.begin(); it2 != pollFds.end(); ++it2) {
+		if (it2->fd == client_fd) {
+			pollFds.erase(it2);
+			clients.erase(searchClient(client_fd));
+			break;
+		}
+	}
+	close(client_fd);
 }
 
 void Server::removeClient(int client_fd)
@@ -307,8 +342,6 @@ void Server::removeClient(int client_fd)
 	
 	for (std::vector<struct pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it) {
 		if (it->fd == client_fd) {
-			std::vector<Client>::iterator it2 = searchClient(client_fd);
-			suddenQuit(it2);
 			pollFds.erase(it);
 			clients.erase(searchClient(client_fd));
 			break;
@@ -340,13 +373,15 @@ void Server::runServerLoop()
 				if (pollFds[i].fd == serverFd) {
 					acceptNewConnection();
 				} else {
-					handleClientData(pollFds[i].fd);
+					if (handleClientData(pollFds[i].fd) == false) {
+						removeClient(pollFds[i].fd);
+						--i;
+					}
 				}
 			}
-			
 			if (pollFds[i].revents & (POLLHUP | POLLERR)) {
 				if (pollFds[i].fd != serverFd) {
-					removeClient(pollFds[i].fd);
+					suddenQuit(searchClient(pollFds[i].fd));
 					--i;
 				}
 			}

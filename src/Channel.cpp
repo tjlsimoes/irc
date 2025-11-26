@@ -61,6 +61,8 @@ std::vector<char> Channel::getFlags() const
 
 void Channel::addFlag(char flag)
 {
+	if (hasFlag(flag))
+		return;
 	flags.push_back(flag);
 }
 
@@ -122,21 +124,35 @@ void Channel::setInviteOnly(bool const add) {
 	changeFlag('i', add);
 }
 
-void Channel::addInvite(std::string const &nickname) {
-	inviteList.push_back(nickname);
+void Channel::addInvite(int clientId) {
+	inviteList.push_back(clientId);
 }
 
-void Channel::removeInvite(std::string const &nickname) {
-	for (std::vector<std::string>::iterator it = inviteList.begin(); it != inviteList.end(); ++it) {
-		if (*it == nickname) {
+void Channel::removeInvite(int clientId) {
+	for (std::vector<int>::iterator it = inviteList.begin(); it != inviteList.end(); ++it) {
+		if (*it == clientId) {
 			inviteList.erase(it);
 			break;
 		}
 	}
 }
 
-bool Channel::isInvited(std::string const &nickname) {
-	return std::count(inviteList.begin(), inviteList.end(), nickname);
+bool Channel::isInvited(int clientId) const {
+	for (std::vector<int>::const_iterator it = inviteList.begin(); it != inviteList.end(); ++it) {
+		if (*it == clientId) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Channel::hasFlag(char flag) const
+{
+	for (size_t i = 0; i < flags.size(); ++i) {
+		if (flags[i] == flag)
+			return true;
+	}
+	return false;
 }
 
 bool Channel::isTopicLocked() const {

@@ -19,7 +19,7 @@ class Channel
 		std::string topicSetter;
 		time_t timestamp;
 		bool inviteOnly;
-		std::vector<std::string> inviteList;
+		std::vector<int> inviteList;
 		bool topicLocked;
 		std::string key;
 		int limit;
@@ -43,12 +43,13 @@ class Channel
 		std::string getTopicSetter() const;
 
 		void changeFlag(char flag, bool add);
+		bool hasFlag(char flag) const;
 
 		bool isInviteOnly() const;
 		void setInviteOnly(bool add);
-		void addInvite(std::string const &nickname);
-		void removeInvite(std::string const &nickname);
-		bool isInvited(std::string const &nickname);
+		void addInvite(int clientId);
+		void removeInvite(int clientId);
+		bool isInvited(int clientId) const;
 
 		bool isTopicLocked() const;
 		void setTopicLock(bool add);
