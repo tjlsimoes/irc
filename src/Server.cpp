@@ -303,7 +303,6 @@ bool Server::handleClientData(int client_fd)
 
 void Server::suddenQuit(std::vector<Client>::iterator it)
 {
-	std::cout << "AQUIIIII 3" << std::endl;
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() +
 						  "@host QUIT " + "\r\n";
 	for (std::vector<Channel>::iterator it_channel = channels.begin(); it_channel != channels.end(); ++it_channel) {
@@ -311,6 +310,9 @@ void Server::suddenQuit(std::vector<Client>::iterator it)
 			it_channel->removeClient(*it);
 			if (it_channel->isOperator(*it)) {
 				it_channel->removeOp(*it);
+			}
+			if (it_channel->isInvited(it->getClientFd())) {
+				it_channel->removeInvite(it->getClientFd());
 			}
 
 			// Send QUIT to all remaining clients in this channel

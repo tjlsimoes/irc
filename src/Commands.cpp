@@ -239,7 +239,8 @@ void Server::handleWho(std::string input, std::vector<Client>::iterator it)
 		send(it->getClientFd(), "Invalid channel name!\n", 22, 0);
 		return;
 	}
-	std::string const & channelName = args[1].substr(1, args[1].size());
+	std::string channelName;
+	args[1][0] == '#' ? channelName = args[1].substr(1) : channelName = args[1];
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 	if (it_channel == channels.end()) {
 		send(it->getClientFd(), "No such channel.\n", 17, 0);
@@ -278,11 +279,11 @@ void Server::handleInvite(std::string input, std::vector<Client>::iterator it)
 		return ;
 	}
 	std::string const & nick = args[1];
-	std::string const & chan = args[2].substr(1, args[2].size());
+	std::string chan;
+	args[1][0] == '#' ? chan = args[2].substr(1) : chan = args[2];
 	std::cout << "Invite command: nick=" << nick << ", chan=" << chan << std::endl;
 
 	std::vector<Channel>::iterator const it_channel = searchChannel(chan);
-	std::cout << it_channel->getName() << std::endl;
 	// Invalid channel
 	if (it_channel == channels.end()) {
 		// find target client
@@ -365,7 +366,8 @@ void Server::handleMode(std::string input, std::vector<Client>::iterator it)
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::string const & channelName = args[1].substr(1, args[1].size());
+	std::string channelName;
+	args[1][0] == '#' ? channelName = args[1].substr(1) : channelName = args[1];
 	std::vector<Channel>::iterator it_channel = searchChannel(channelName);
 	if (it_channel == channels.end()) {
 		std::string message = ":ircserver.local 403 " + it->getNickname() + " MODE: no such channel" "\r\n";
@@ -542,6 +544,9 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 			if (it_channel->isOperator(*it)) {
 				it_channel->removeOp(*it);
 			}
+			if (it_channel->isInvited(it->getClientFd())) {
+				it_channel->removeInvite(it->getClientFd());
+			}
 
 			// Send QUIT to all remaining clients in this channel
 			const std::vector<Client>& channelClients = it_channel->getClients();
@@ -565,7 +570,8 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::string const & channelName = args[1].substr(1, args[1].size());
+	std::string channelName;
+	args[1][0] == '#' ? channelName = args[1].substr(1) : channelName = args[1];
 	std::vector<Channel>::iterator const it_channel = searchChannel(channelName);
 
 	if (it_channel == channels.end()) {
@@ -624,7 +630,8 @@ void Server::handleKick(std::string input, std::vector<Client>::iterator it)
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
-	std::string const & channelName = args[1].substr(1, args[1].size());;
+	std::string channelName;
+	args[1][0] == '#' ? channelName = args[1].substr(1) : channelName = args[1];
 	std::vector<Channel>::iterator const it_channel = searchChannel(channelName);
 
 	if (it_channel == channels.end()) {
