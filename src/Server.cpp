@@ -38,7 +38,7 @@ int Server::getPort()
 
 void Server::setPort(int num)
 {
-	if (num == 0)
+	if (num <= 0 || num > 65535)
 		throw std::invalid_argument("Invalid Port");
 	port = num;
 }
@@ -50,6 +50,9 @@ std::string Server::getPassword()
 
 void Server::setPassword(std::string str)
 {
+	if (str.empty()) {
+		throw std::invalid_argument("Password must not be empty");
+	}
 	password = str;
 }
 
@@ -243,20 +246,33 @@ void Server::acceptNewConnection()
 bool Server::handleClientData(int client_fd)
 {
 	char buffer[1024];
-	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-	
-	if (bytes_read <= 0) {
-		if (bytes_read == 0 || (errno != EAGAIN && errno != EWOULDBLOCK)) {
-			return false;
+	std::string readData;
+	while (true) {
+		ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+		if (bytes_read <= 0) {
+			if (bytes_read == 0) {
+				return false; // client closed connection
+			}
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				break; // no more data for now
+			}
+			return false; // other error
 		}
-		return false;
+		buffer[bytes_read] = '\0';
+		readData.append(buffer, bytes_read);
+		if (readData.find('\n') != std::string::npos) {
+			break; // we have at least one full line
+		}
+		// continue reading until newline or EAGAIN
 	}
-	buffer[bytes_read] = '\0';
+	if (readData.empty()) {
+		return true; // nothing complete to process yet
+	}
 
 	
 	std::vector<Client>::iterator it = searchClient(client_fd);
 	send(client_fd, "\n", 1, 0);
-	std::vector<std::string> lines = split(buffer);
+	std::vector<std::string> lines = split(readData);
 
 	for (size_t i = 0; i < lines.size(); i++) {
 		std::string input(lines[i]);
@@ -278,8 +294,8 @@ bool Server::handleClientData(int client_fd)
 		if (!it->isClientAuthenticated()) {
 			if (input != ("PASS " + password)) {
 				send(client_fd, "Wrong password!\n", 16, 0);
-				removeClient(client_fd);
 				std::cout << "Client disconnected due to wrong password (fd: " << client_fd << ")" << std::endl;
+				return false;
 			}
 			else {
 				it->changeAuthenticationStatus();
@@ -322,6 +338,11 @@ void Server::suddenQuit(std::vector<Client>::iterator it)
 					send(channelClients[i].getClientFd(), message.c_str(), message.length(), 0);
 				}
 			}
+			if (it_channel->getClients().empty()) {
+				std::cout << "Channel #" << it_channel->getName() << " deleted as it has no clients left." << std::endl;
+				channels.erase(it_channel);
+				it_channel--;
+			}
 		}
 	}
 
@@ -340,8 +361,12 @@ void Server::suddenQuit(std::vector<Client>::iterator it)
 
 void Server::removeClient(int client_fd)
 {
+	std::vector<Client>::iterator it = searchClient(client_fd);
+	if (it->isClientAuthenticated()) {
+		suddenQuit(it);
+		return ;
+	}
 	std::cout << "Client disconnected (fd: " << client_fd << ")" << std::endl;
-	
 	for (std::vector<struct pollfd>::iterator it = pollFds.begin(); it != pollFds.end(); ++it) {
 		if (it->fd == client_fd) {
 			pollFds.erase(it);
@@ -371,6 +396,12 @@ void Server::runServerLoop()
 		}
 
 		for (size_t i = 0; i < pollFds.size(); ++i) {
+			if (pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+				if (pollFds[i].fd != serverFd) {
+					suddenQuit(searchClient(pollFds[i].fd));
+					--i;
+				}
+			}
 			if (pollFds[i].revents & POLLIN) {
 				if (pollFds[i].fd == serverFd) {
 					acceptNewConnection();
@@ -379,12 +410,6 @@ void Server::runServerLoop()
 						removeClient(pollFds[i].fd);
 						--i;
 					}
-				}
-			}
-			if (pollFds[i].revents & (POLLHUP | POLLERR)) {
-				if (pollFds[i].fd != serverFd) {
-					suddenQuit(searchClient(pollFds[i].fd));
-					--i;
 				}
 			}
 		}

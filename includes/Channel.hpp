@@ -13,7 +13,6 @@ class Channel
 		std::string name;
 		std::vector<Client> clients;
 		std::vector<Client> ops;
-		Server* server;
 		std::vector<char> flags;
 		std::string topic;
 		std::string topicSetter;
@@ -25,7 +24,7 @@ class Channel
 		int limit;
 
 	public:
-		Channel(std::string name, Server* serv);
+		Channel(std::string name);
 		~Channel();
 		void addClient(Client client);
 		void removeClient(Client client);

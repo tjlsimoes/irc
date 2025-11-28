@@ -33,7 +33,7 @@ void Server::joinChannel(std::string input, std::vector<Client>::iterator it)
 				send(it->getClientFd(), "Invalid channel name.\r\n", 23, 0);
 				return ;
 			}
-			channels.push_back(Channel(channelName, this));
+			channels.push_back(Channel(channelName));
 			operatorFlag = true;
 		}
 		it_channel = searchChannel(channelName);
@@ -280,7 +280,7 @@ void Server::handleInvite(std::string input, std::vector<Client>::iterator it)
 	}
 	std::string const & nick = args[1];
 	std::string chan;
-	args[1][0] == '#' ? chan = args[2].substr(1) : chan = args[2];
+	args[2][0] == '#' ? chan = args[2].substr(1) : chan = args[2];
 	std::cout << "Invite command: nick=" << nick << ", chan=" << chan << std::endl;
 
 	std::vector<Channel>::iterator const it_channel = searchChannel(chan);
@@ -555,10 +555,15 @@ void Server::handleQuit(std::string input, std::vector<Client>::iterator it)
 					send(channelClients[i].getClientFd(), message.c_str(), message.length(), 0);
 				}
 			}
+			if (it_channel->getClients().empty()) {
+				std::cout << "Channel #" << it_channel->getName() << " deleted as it has no clients left." << std::endl;
+				channels.erase(it_channel);
+				it_channel--;
+			}
 		}
 	}
 
-	// Log and remove client
+	it->changeAuthenticationStatus();	
 	std::cout << "Client " << it->getClientFd() << " quit: " << reason << std::endl;
 }
 

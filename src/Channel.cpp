@@ -1,12 +1,13 @@
 #include "../includes/Channel.hpp"
 
-Channel::Channel(std::string name, Server* serv) : name(name), server(serv)
+Channel::Channel(std::string name) : name(name)
 {
 	topic = "";
 	topicSetter = "";
 	inviteOnly = false;
 	topicLocked = false;
 	limit = 0; // Default value for no limit
+	
 }
 
 Channel::~Channel()

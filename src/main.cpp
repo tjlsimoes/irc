@@ -18,7 +18,13 @@ int main(int argc, char **argv)
 		std::cout << "Invalid Port" << std::endl;
 		return (1);
 	}
-	server.setPassword(std::string(argv[2]));
+	try {
+		server.setPassword(std::string(argv[2]));
+	} catch (std::exception& e) {
+		std::cout << "Invalid Password" << std::endl;
+		return (1);
+	}
+	
 	std::cout << server.getPort() << " " << server.getPassword() << std::endl;
 
 	server.startServer();
