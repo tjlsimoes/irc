@@ -8,9 +8,14 @@ SRC = $(addprefix ./src/, $(SOURCES))
 
 SOURCES = main.cpp Server.cpp Client.cpp Commands.cpp Utils.cpp Channel.cpp SignalHandler.cpp
 
+DEBUGFLAGS = -g3
+
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)
+
+debug: CXXFLAGS += $(DEBUGFLAGS) -Wall -Werror -Wextra
+debug: $(NAME)
 
 %.o: %.cpp
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -27,4 +32,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+.PHONY: all debug clean fclean re

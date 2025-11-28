@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug ircserv",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/ircserv",
+            "args": ["6667", "password"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                { "text": "-enable-pretty-printing" }
+            ],
+            "preLaunchTask": "make debug"
+        }
+    ]
+}
