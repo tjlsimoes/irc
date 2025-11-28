@@ -603,7 +603,7 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	if (args.size() <= 3) {
+	if (args.size() < 3) {
 		std::string message = ":ircserver.local 461 " + it->getNickname() + " TOPIC: not enough parameters" "\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
@@ -615,7 +615,7 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		newTopic = newTopic.substr(1);
 	it_channel->setTopic(newTopic, it->getNickname());
 	std::string message = ":" + it->getNickname() + "!" + it->getUsername() + "@host TOPIC #" + channelName + " :" + newTopic + "\r\n";
-	for (size_t i = 0; i < it_channel->getClients().size(); ++i) {
+	for (size_t i = 0; i < it_channel->getClients().size(); i++) {
 		std::cout << "Sending topic change to client " << it_channel->getClients()[i].getClientFd() << ": " << message;
 		send(it_channel->getClients()[i].getClientFd(), message.c_str(), message.length(), 0);
 	}
