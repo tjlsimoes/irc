@@ -597,13 +597,14 @@ void Server::handleTopic(std::string input, std::vector<Client>::iterator it)
 		return;
 	}
 
-	if (args.size() != 3) {
+	if (args.size() <= 3) {
 		std::string message = ":ircserver.local 461 " + it->getNickname() + " TOPIC: not enough parameters" "\r\n";
 		send(it->getClientFd(), message.c_str(), message.length(), 0);
 		return ;
 	}
 
-	std::string newTopic = args[2];
+	std::string temp = args[2];
+	std::string newTopic = input.substr(input.find(temp));
 	if (newTopic[0] == ':')
 		newTopic = newTopic.substr(1);
 	it_channel->setTopic(newTopic, it->getNickname());
